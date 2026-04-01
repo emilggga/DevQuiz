@@ -30,11 +30,20 @@ export default function App() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [user, setUser] = useState(auth.currentUser);
+  const [isConnected, setIsConnected] = useState(false);
   const scoreSavedRef = useRef(false);
 
   useEffect(() => {
     const newSocket = io();
     setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+    });
 
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -67,6 +76,7 @@ export default function App() {
 
     newSocket.on('error', (msg: string) => {
       setError(msg);
+      setJoined(false); // Reset joined state on error
       setTimeout(() => setError(''), 3000);
     });
 
@@ -118,6 +128,10 @@ export default function App() {
   };
 
   const handleCreateRoom = () => {
+    if (!isConnected) {
+      setError('Connecting to server...');
+      return;
+    }
     if (!name.trim()) {
       setError('Please enter your name first');
       return;
@@ -129,6 +143,10 @@ export default function App() {
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isConnected) {
+      setError('Connecting to server...');
+      return;
+    }
     if (!name.trim()) {
       setError('Please enter your name first');
       return;
@@ -171,15 +189,20 @@ export default function App() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 ml-1">Your Profile</label>
-              {user ? (
-                <button onClick={handleLogout} className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
-                  <LogOut className="w-3 h-3" /> Sign Out
-                </button>
-              ) : (
-                <button onClick={handleLogin} className="text-[10px] text-orange-500 hover:text-orange-400 font-bold flex items-center gap-1 transition-colors">
-                  <LogIn className="w-3 h-3" /> Sign In with Google
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {!isConnected && (
+                  <span className="text-[10px] text-yellow-500 animate-pulse">Connecting...</span>
+                )}
+                {user ? (
+                  <button onClick={handleLogout} className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
+                    <LogOut className="w-3 h-3" /> Sign Out
+                  </button>
+                ) : (
+                  <button onClick={handleLogin} className="text-[10px] text-orange-500 hover:text-orange-400 font-bold flex items-center gap-1 transition-colors">
+                    <LogIn className="w-3 h-3" /> Sign In with Google
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>
@@ -203,14 +226,16 @@ export default function App() {
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={handleCreateRoom}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-all transform active:scale-95 shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
+                  disabled={!isConnected}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all transform active:scale-95 shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
                 >
                   Create New Room
                   <Play className="w-4 h-4 fill-current" />
                 </button>
                 <button
                   onClick={() => setIsJoining(true)}
-                  className="w-full bg-[#1a1a1a] border border-[#262626] hover:border-gray-600 text-white font-bold py-4 rounded-xl transition-all transform active:scale-95 flex items-center justify-center gap-2"
+                  disabled={!isConnected}
+                  className="w-full bg-[#1a1a1a] border border-[#262626] hover:border-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all transform active:scale-95 flex items-center justify-center gap-2"
                 >
                   Join Existing Room
                   <LogIn className="w-4 h-4" />
@@ -255,7 +280,8 @@ export default function App() {
                   </button>
                   <button
                     type="submit"
-                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20"
+                    disabled={!isConnected}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20"
                   >
                     Join
                   </button>
@@ -304,7 +330,20 @@ export default function App() {
     );
   }
 
-  if (!gameState) return null;
+  if (!gameState) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-4 font-sans">
+        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-400 animate-pulse">Entering room...</p>
+        <button 
+          onClick={() => setJoined(false)}
+          className="mt-8 text-xs text-gray-500 hover:text-white underline"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
 
   const currentPlayer = gameState.players.find(p => p.id === socket?.id);
 
