@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "A record of a player's high score",
+      "type": "object",
+      "properties": {
+        "playerName": {
+          "type": "string",
+          "description": "The name of the player"
+        },
+        "score": {
+          "type": "integer",
+          "description": "The score achieved"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the score was achieved"
+        }
+      },
+      "required": ["playerName", "score", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/leaderboard/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global leaderboard collection"
+    }
+  }
+}

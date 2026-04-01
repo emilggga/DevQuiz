@@ -1,0 +1,5 @@
+{
+  "name": "DevQuiz Multiplayer",
+  "description": "A real-time multiplayer programming quiz where speed and accuracy earn you points.",
+  "requestFramePermissions": []
+}
